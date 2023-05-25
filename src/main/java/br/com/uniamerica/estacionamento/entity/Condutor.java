@@ -23,8 +23,4 @@ public class Condutor extends AbstractEntity{
     @Getter @Setter
     @Column(name = "tempo_pago")
     private  LocalTime tempoPago;
-    @Getter @Setter
-    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinColumn(name = "movimentacao_condutor")
-    private Movimentacao movimentacao;
 }

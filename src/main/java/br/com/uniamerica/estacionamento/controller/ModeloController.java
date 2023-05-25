@@ -100,22 +100,14 @@ public class ModeloController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deletar(@PathVariable Long id) {
-        Optional<Modelo> optionalModelo = modeloRepository.findById(id);
-        Optional<Veiculo> optionalVeiculo = veiculoRepository.findById(id);
-
-        if (optionalModelo.isPresent() && optionalVeiculo.isPresent()) {
-            Veiculo veiculo = optionalVeiculo.get();
-            Modelo modelo = optionalModelo.get();
-            Modelo modelov = veiculo.getModelo();
-            Movimentacao movimentacao = veiculo.getMovimentacao();
-
-            if (movimentacao.isAtivo() && modelo != (modelov)) {
-                modeloRepository.delete(modelo);
-                return ResponseEntity.ok("O registro do modelo foi deletado com sucesso");
+        final Modelo modelo = this.modeloRepository.findById(id).orElse(null);
+        if (modelo != null) {
+            List<Veiculo> veiculosVinculados = this.veiculoRepository.findByModelo(modelo);
+            if (veiculosVinculados.isEmpty()) {
+                this.modeloRepository.delete(modelo);
+                return ResponseEntity.ok("Registro deletado com sucesso!");
             } else {
-                modelo.setAtivo(false);
-                modeloRepository.save(modelo);
-                return ResponseEntity.ok("O modelo estava vinculado a uma ou mais movimentações e foi desativado com sucesso");
+                return ResponseEntity.badRequest().body("Não é possível deletar o modelo, pois existem veículos vinculados a ele.");
             }
         } else {
             return ResponseEntity.notFound().build();

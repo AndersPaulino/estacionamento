@@ -1,39 +1,50 @@
 package br.com.uniamerica.estacionamento.controller;
+import br.com.uniamerica.estacionamento.entity.Modelo;
 import br.com.uniamerica.estacionamento.entity.Movimentacao;
 import br.com.uniamerica.estacionamento.entity.Veiculo;
+import br.com.uniamerica.estacionamento.repository.ModeloRepository;
+import br.com.uniamerica.estacionamento.repository.MovimentacaoRepository;
 import br.com.uniamerica.estacionamento.repository.VeiculoRepository;
 import br.com.uniamerica.estacionamento.service.VeiculoService;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @Controller
-@RequestMapping(value = "/api/veiculo")
+@RequestMapping("/api/veiculo")
 public class VeiculoController {
 
-
-    @Autowired
     private VeiculoRepository veiculoRepository;
 
-    @Autowired
     private VeiculoService veiculoService;
 
-    @GetMapping("/{id}")
-    public ResponseEntity<?> findByIdRequest(@PathVariable("id") final Long id){
 
-        final Veiculo veiculo = this.veiculoRepository.findById(id).orElse(null);
-        return veiculo == null
-                ? ResponseEntity.badRequest().body("Nenhum valor Encontrado")
-                : ResponseEntity.ok(veiculo);
+    private ModeloRepository modeloRepository;
+
+    private MovimentacaoRepository movimentacaoRepository;
+
+    public VeiculoController(VeiculoRepository veiculoRepository, VeiculoService veiculoService, ModeloRepository modeloRepository, MovimentacaoRepository movimentacaoRepository) {
+        this.veiculoRepository = veiculoRepository;
+        this.veiculoService = veiculoService;
+        this.modeloRepository = modeloRepository;
+        this.movimentacaoRepository = movimentacaoRepository;
     }
 
-    @GetMapping("/lista")
-    public ResponseEntity<?> listaCompleta(){
-        return ResponseEntity.ok(this.veiculoRepository.findAll());
+    @GetMapping("/{id}")
+    public ResponseEntity<Veiculo> findById(@PathVariable Long id) {
+        Optional<Veiculo> veiculo = veiculoRepository.findById(id);
+        if (veiculo.isPresent()) {
+            return ResponseEntity.ok().body(veiculo.get());
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping("/ativo/{ativo}")
@@ -46,44 +57,65 @@ public class VeiculoController {
         }
     }
 
+    @GetMapping
+    public ResponseEntity<?> findAll() {
+        List<Veiculo> veiculos = veiculoRepository.findAll();
+        if (veiculos.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        } else {
+            return ResponseEntity.ok().body(veiculos);
+        }
+    }
+
     @PostMapping
-    public ResponseEntity<?> cadastrar(@RequestBody final Veiculo veiculo){
-        try{
-            this.veiculoRepository.save(veiculo);
-            return ResponseEntity.ok("REGISTRO CADASTRADO COM SUCESSO");
-        }catch (Exception e){
-            return ResponseEntity.badRequest().body("erro" +e.getStackTrace());
-        }
+    public ResponseEntity<?> cadastrar(@RequestBody Veiculo veiculo) {
+        veiculoService.cadastrar(veiculo);
+        return ResponseEntity.ok().body("Registro cadastrado com sucesso");
     }
 
-    @PutMapping
-    public ResponseEntity<?> editar(@RequestParam("id") final Long id, @RequestBody final Veiculo veiculo) {
-        try {
-            final Veiculo veiculoBanco = this.veiculoRepository.findById(id).orElse(null);
-            if(veiculoBanco == null || !veiculoBanco.getId().equals(veiculo.getId())){
-                throw new RuntimeException("O registro nao foi encontrado");
+    @GetMapping("/veiculos/modelo/{modeloId}")
+    public ResponseEntity<List<Veiculo>> findByModelo(@PathVariable Long modeloId) {
+        Optional<Modelo> optionalModelo = modeloRepository.findById(modeloId);
+        if (optionalModelo.isPresent()) {
+            Modelo modelo = optionalModelo.get();
+            List<Veiculo> veiculos = veiculoRepository.findByModelo(modelo);
+            if (veiculos.isEmpty()) {
+                return ResponseEntity.noContent().build();
+            } else {
+                return ResponseEntity.ok(veiculos);
             }
-            this.veiculoRepository.save(veiculo);
-            return ResponseEntity.ok("registro cadastrado");
-
-        }catch (DataIntegrityViolationException e){
-            return ResponseEntity.internalServerError().body("erro" + e.getCause().getCause().getMessage());
-        }catch (RuntimeException e){
-            return ResponseEntity.internalServerError().body("erro" + e.getMessage());
+        } else {
+            return ResponseEntity.notFound().build();
         }
     }
-    /*@DeleteMapping
-    public ResponseEntity<?>deleta(@RequestParam("id") final Long id){
-        final Veiculo veiculo = this.veiculoRepository.findById(id).orElse(null);
 
-        List<Movimentacao> movimentacao = this.veiculoRepository.findMovimentacaoByVeiculo(veiculo);
-
-        if(movimentacao == null){
-            this.veiculoService.deleta(veiculo);
-        }else{
-            veiculo.setAtivo(false);
-            this.veiculoRepository.save(veiculo);
+    @PutMapping("/{id}")
+    public ResponseEntity<?> atualizar(@PathVariable @NotNull Long id, @RequestBody Veiculo veiculo) {
+        try {
+            veiculoService.atualizar(id, veiculo);
+            return ResponseEntity.ok().body("Registro atualizado com sucesso!");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro ao atualizar o registro.");
         }
-        return ResponseEntity.ok("Veiculo deletado");
-    }*/
+    }
+
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deletar(@PathVariable Long id) {
+        final Veiculo veiculo = this.veiculoRepository.findById(id).orElse(null);
+        if (veiculo != null) {
+            List<Movimentacao> movimentacoesVinculadas = this.movimentacaoRepository.findByVeiculo(veiculo);
+            if (movimentacoesVinculadas.isEmpty()) {
+                this.veiculoRepository.delete(veiculo);
+                return ResponseEntity.ok("Registro deletado com sucesso!");
+            } else {
+                return ResponseEntity.badRequest().body("Não é possível deletar o veículo, pois existem movimentações vinculadas a ele.");
+            }
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
 }

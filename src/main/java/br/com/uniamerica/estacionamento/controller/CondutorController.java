@@ -3,6 +3,7 @@ package br.com.uniamerica.estacionamento.controller;
 import br.com.uniamerica.estacionamento.entity.Condutor;
 import br.com.uniamerica.estacionamento.entity.Movimentacao;
 import br.com.uniamerica.estacionamento.repository.CondutorRepository;
+import br.com.uniamerica.estacionamento.repository.MovimentacaoRepository;
 import br.com.uniamerica.estacionamento.service.CondutorService;
 
 import jakarta.validation.constraints.NotNull;
@@ -22,10 +23,13 @@ public class CondutorController {
     private final CondutorService condutorService;
     private final CondutorRepository condutorRepository;
 
+    private  final MovimentacaoRepository movimentacaoRepository;
+
     @Autowired
-    public  CondutorController(CondutorService condutorService, CondutorRepository condutorRepository) {
+    public  CondutorController(CondutorService condutorService, CondutorRepository condutorRepository, MovimentacaoRepository movimentacaoRepository) {
         this.condutorService = condutorService;
         this.condutorRepository = condutorRepository;
+        this.movimentacaoRepository = movimentacaoRepository;
     }
 
 
@@ -92,20 +96,15 @@ public class CondutorController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deletar(@PathVariable final Long id) {
-        Optional<Condutor> optionalCondutor = condutorRepository.findById(id);
-
-        if (optionalCondutor.isPresent()) {
-            Condutor condutor = optionalCondutor.get();
-            Movimentacao movimentacao = condutor.getMovimentacao();
-
-            if (movimentacao.isAtivo()) {
-                condutorRepository.delete(condutor);
-                return ResponseEntity.ok().body("O registro do condutor foi deletado com sucesso");
+    public ResponseEntity<?> deletar(@PathVariable Long id) {
+        final Condutor condutor = this.condutorRepository.findById(id).orElse(null);
+        if (condutor != null) {
+            List<Movimentacao> movimentacoesVinculadas = this.movimentacaoRepository.findByCondutor(condutor);
+            if (movimentacoesVinculadas.isEmpty()) {
+                this.condutorRepository.delete(condutor);
+                return ResponseEntity.ok("Registro deletado com sucesso!");
             } else {
-                condutor.setAtivo(false);
-                condutorRepository.save(condutor);
-                return ResponseEntity.ok().body("O condutor estava vinculado a uma ou mais movimentações e foi desativado com sucesso");
+                return ResponseEntity.badRequest().body("Não é possível deletar o condutor, pois existem movimentações vinculadas a ele.");
             }
         } else {
             return ResponseEntity.notFound().build();

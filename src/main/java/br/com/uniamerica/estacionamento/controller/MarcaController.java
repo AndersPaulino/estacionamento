@@ -98,23 +98,15 @@ public class MarcaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deletar(@PathVariable Long id, @RequestBody Marca marca) {
-        Optional<Marca> optionalMarca = marcaRepository.findById(id);
-        Optional<Modelo> optionalModelo = modeloRepository.findById(id);
-        Optional<Veiculo> optionalVeiculo = veiculoRepository.findById(id);
-
-        if (optionalMarca.isPresent() && optionalModelo.isPresent() && optionalVeiculo.isPresent()) {
-            Veiculo veiculo = optionalVeiculo.get();
-            Marca marca1 = optionalMarca.get();
-            Modelo modelo = optionalModelo.get();
-            Marca marcaVeiculo = veiculo.getModelo().getMarca();
-            Movimentacao movimentacao = veiculo.getMovimentacao();
-
-            if (movimentacao.isAtivo() && marca1.equals(marcaVeiculo)) {
-                marcaRepository.delete(marca1);
-                return ResponseEntity.ok("O registro da marca foi deletado com sucesso");
+    public ResponseEntity<?> deletar(@PathVariable Long id) {
+        final Marca marca = this.marcaRepository.findById(id).orElse(null);
+        if (marca != null) {
+            List<Modelo> modelosVinculados = this.modeloRepository.findByMarca(marca);
+            if (modelosVinculados.isEmpty()) {
+                this.marcaRepository.delete(marca);
+                return ResponseEntity.ok("Registro deletado com sucesso!");
             } else {
-                return ResponseEntity.ok("A marca estava vinculada a uma ou mais movimentações e foi desativada com sucesso");
+                return ResponseEntity.badRequest().body("Não é possível deletar a marca, pois existem modelos vinculados a ela.");
             }
         } else {
             return ResponseEntity.notFound().build();

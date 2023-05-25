@@ -26,8 +26,5 @@ public class Veiculo extends AbstractEntity{
     @Column(name = "ano_modelo", nullable = false, length = 5)
     private int anoModelo;
 
-    @Getter @Setter
-    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinColumn(name = "movimentacao_veiculo")
-    private Movimentacao movimentacao;
+
 }
