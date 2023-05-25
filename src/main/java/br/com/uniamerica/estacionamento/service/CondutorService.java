@@ -30,11 +30,13 @@ public class CondutorService {
         if (condutor.getCpf().isEmpty()) {
             throw new IllegalArgumentException("CPF do condutor não informado");
         }
-
         if (!condutor.getCpf().matches("\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}")) {
             throw new IllegalArgumentException("CPF do condutor inválido");
         }
-
+        String cpf = condutor.getCpf();
+        if (!validarCPF(cpf)) {
+            throw new IllegalArgumentException("CPF do condutor inválido");
+        }
         if (condutor.getTelefone().isEmpty()) {
             throw new IllegalArgumentException("Telefone do condutor não informado");
         }
@@ -45,6 +47,39 @@ public class CondutorService {
 
         // Salvar ou atualizar o condutor usando o JpaRepository
         condutorRepository.save(condutor);
+    }
+    private boolean validarCPF(String cpf) {
+        // Remover caracteres não numéricos do CPF
+        cpf = cpf.replaceAll("\\D+", "");
+
+        // Verificar se o CPF possui 11 dígitos
+        if (cpf.length() != 11) {
+            return false;
+        }
+
+        // Calcular os dígitos verificadores do CPF
+        int digito1 = calcularDigitoVerificadorCPF(cpf.substring(0, 9));
+        int digito2 = calcularDigitoVerificadorCPF(cpf.substring(0, 9) + digito1);
+
+        // Verificar se os dígitos verificadores calculados são iguais aos informados no CPF
+        return cpf.equals(cpf.substring(0, 9) + digito1 + digito2);
+    }
+
+    private int calcularDigitoVerificadorCPF(String cpf) {
+        int soma = 0;
+        int peso = 10;
+
+        for (int i = 0; i < cpf.length(); i++) {
+            soma += Character.getNumericValue(cpf.charAt(i)) * peso;
+            peso--;
+        }
+
+        int resto = soma % 11;
+        if (resto < 2) {
+            return 0;
+        } else {
+            return 11 - resto;
+        }
     }
 
     public void validarCondutorCadastrado(final Condutor condutor) {

@@ -5,71 +5,74 @@ import br.com.uniamerica.estacionamento.entity.Veiculo;
 import br.com.uniamerica.estacionamento.repository.VeiculoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.Assert;
 
-import java.util.List;
+import java.util.Optional;
 
 @Service
 public class VeiculoService {
 
+    private final VeiculoRepository veiculoRepository;
+
     @Autowired
-    private VeiculoRepository veiculoRepository;
-
-
-    @Transactional
-    public void cadastrar(Veiculo veiculo){
-
-        Assert.isTrue(veiculo.getPlaca() != null, "placa nao identificada");
-        Assert.isTrue(veiculo.getModelo() != null, "modelo nao identificado");
-        Assert.isTrue(veiculo.getCor() != null, "cor nao identificada");
-        Assert.isTrue(veiculo.getTipo() != null, "tipo nao identificado");
-
-
-        String placaAntiga = "^[A-Z]{3}-\\d{4}$";
-        Assert.isTrue(!veiculo.getPlaca().matches(placaAntiga), "formatação de placa errada");
-        String placaNova = "^[A-Z]{3}\\d{1}[A-Z]{1}\\d{2}$";
-        Assert.isTrue(!veiculo.getPlaca().matches(placaNova), "formatação de placa errada");
-
-        this.veiculoRepository.save(veiculo);
-
+    public VeiculoService(VeiculoRepository veiculoRepository) {
+        this.veiculoRepository = veiculoRepository;
     }
+    public void validarVeiculo(final Veiculo veiculo) {
 
-    @Transactional
-    public void editar(Veiculo veiculo){
-
-        final Veiculo veiculoBanco = this.veiculoRepository.findById(veiculo.getId()).orElse(null);
-
-
-        Assert.isTrue(veiculo.getPlaca() != null, "placa nao foi colocado");
-        Assert.isTrue(veiculo.getModelo() != null, "modelo nao foi colocado");
-        Assert.isTrue(veiculo.getCor() != null, "cor nao foi colocado");
-        Assert.isTrue(veiculo.getTipo() != null, "tipo nao foi colocado");
-
-
-        String placaAntiga = "^[A-Z]{3}-\\d{4}$";
-        Assert.isTrue(!veiculo.getPlaca().matches(placaAntiga), "formatação de placa errada");
-        String placaNova = "^[A-Z]{3}\\d{1}[A-Z]{1}\\d{2}$";
-        Assert.isTrue(!veiculo.getPlaca().matches(placaNova), "formatação de placa errada");
-
-        Assert.isTrue(veiculoBanco == null || !veiculoBanco.getId().equals(veiculo.getId()), "nao deu pra indentificar");
-
-        this.veiculoRepository.save(veiculo);
-    }
-
-    /*@Transactional
-    public void deleta(final Veiculo veiculo){
-
-        final Veiculo veiculoBanco = this.veiculoRepository.findById(veiculo.getId()).orElse(null);
-
-        List<Movimentacao> veiculoLista = this.veiculoRepository.findMovimentacaoByVeiculo(veiculoBanco);
-
-        if (veiculoLista == null) {
-            this.veiculoRepository.delete(veiculo);
-        } else {
-            veiculoBanco.setAtivo(false);
-            this.veiculoRepository.save(veiculo);
+        if(veiculo.getPlaca() == null){
+            throw new IllegalArgumentException("Veículo não informado");
         }
-    }*/
+        if(veiculo.getModelo() == null){
+            throw new IllegalArgumentException("Modelo não informado");
+        }
+        if(veiculo.getCor() == null){
+            throw new IllegalArgumentException("Cor do veículo não informada");
+        }
+        if(veiculo.getTipo() == null){
+            throw new IllegalArgumentException("Tipo não informado");
+        }
+        /*if(!veiculo.getPlaca().matches("^[A-Z]{3}-\\d{4}$") || !veiculo.getPlaca().matches("^[A-Z]{3}\\d{1}[A-Z]{1}\\d{2}$")) {
+            throw new IllegalArgumentException("Placa inválida");
+        }*/
+
+        veiculoRepository.save(veiculo);
+    }
+
+
+    @Transactional(rollbackFor = Exception.class, propagation = Propagation.REQUIRES_NEW)
+    public void cadastrar(Veiculo veiculo){
+        validarVeiculo(veiculo);
+        veiculoRepository.save(veiculo);
+    }
+
+    @Transactional(rollbackFor = Exception.class, propagation = Propagation.REQUIRES_NEW)
+    public void atualizar(Long id, Veiculo veiculo) {
+
+        Optional<Veiculo> veiculoExistente = veiculoRepository.findById(id);
+
+        if (veiculoExistente.isPresent()) {
+            Veiculo veiculoAtualizado = veiculoExistente.get();
+
+            if (veiculo.getPlaca() != null) {
+                veiculoAtualizado.setPlaca(veiculo.getPlaca());
+            }
+            if (veiculo.getModelo() != null) {
+                veiculoAtualizado.setModelo(veiculo.getModelo());
+            }
+            if (veiculo.getCor() != null) {
+                veiculoAtualizado.setCor(veiculo.getCor());
+            }
+            if (veiculo.getTipo() != null) {
+                veiculoAtualizado.setTipo(veiculo.getTipo());
+            }
+
+            veiculoRepository.save(veiculoAtualizado);
+        } else {
+            throw new IllegalArgumentException("Id inválido!");
+        }
+    }
+
 
 }

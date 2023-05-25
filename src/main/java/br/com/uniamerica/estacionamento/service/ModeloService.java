@@ -27,6 +27,13 @@ public class ModeloService {
             throw new IllegalArgumentException("Nome do Modelo inválido");
         }
     }
+    public void validarModeloCadastrado(final Modelo modelo){
+        if (!modelo.getNomeModelo().isEmpty()){
+            if (!modelo.getNomeModelo().matches("[a-zA-Z ]+")) {
+                throw new IllegalArgumentException("Nome do Modelo inválido");
+            }
+        }
+    }
 
     public Optional<Modelo> findById(Long id) {
         return modeloRepository.findById(id);
@@ -52,7 +59,7 @@ public class ModeloService {
 
     @Transactional(rollbackFor = Exception.class, propagation = Propagation.REQUIRES_NEW)
     public void atualizarModelo(Long id, Modelo modelo) {
-        validarModelo(modelo);
+        validarModeloCadastrado(modelo);
 
         Optional<Modelo> modeloExistente = modeloRepository.findById(id);
 

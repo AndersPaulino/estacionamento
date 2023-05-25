@@ -8,32 +8,57 @@ import org.springframework.util.Assert;
 @Service
 public class ConfiguracaoService {
 
-    @Autowired
     private ConfiguracaoRepository configuracaoRepository;
 
-    public void configuracao(Configuracao configuracao){
+    @Autowired
+    public ConfiguracaoService(ConfiguracaoRepository configuracaoRepository) {
+        this.configuracaoRepository = configuracaoRepository;
+    }
 
-        Assert.isTrue(configuracao.getValorHora() != null,"valor da hora nao informado");
-        Assert.isTrue(configuracao.getValorMinutoMulta() != null,"valor da multa p/ minuto nao informado");
-        Assert.isTrue(configuracao.getInicioExpediente() != null,"inicio do expediente nao informado");
-        Assert.isTrue(configuracao.getFimExpediente() != null,"fim do expediente nao informado");
-        Assert.isTrue(configuracao.getTempoDeDesconto() != null,"tempo desconto nao informado");
+    public void validarConfiguracao(Configuracao configuracao) {
+        if (configuracao.getValorHora() == null) {
+            throw new IllegalArgumentException("Valor da hora não informado");
+        }
+        if (configuracao.getValorMinutoMulta() == null) {
+            throw new IllegalArgumentException("Valor da multa por minuto não informado");
+        }
+        if (configuracao.getInicioExpediente() == null) {
+            throw new IllegalArgumentException("Início do expediente não informado");
+        }
+        if (configuracao.getFimExpediente() == null) {
+            throw new IllegalArgumentException("Fim do expediente não informado");
+        }
+        if (configuracao.getTempoDeDesconto() == null) {
+            throw new IllegalArgumentException("Tempo de desconto não informado");
+        }
 
         configuracaoRepository.save(configuracao);
     }
 
-    public void editar(Configuracao configuracao){
+    public void atualizar(Configuracao configuracao) {
+        final Configuracao configuracaoBanco = configuracaoRepository.findById(configuracao.getId()).orElse(null);
 
-        final Configuracao configuracaoBanco = this.configuracaoRepository.findById(configuracao.getId()).orElse(null);
+        if (configuracao.getValorHora() == null) {
+            throw new IllegalArgumentException("Valor da hora não foi informado");
+        }
+        if (configuracao.getValorMinutoMulta() == null) {
+            throw new IllegalArgumentException("Valor da multa por minuto não foi informado");
+        }
+        if (configuracao.getInicioExpediente() == null) {
+            throw new IllegalArgumentException("Início do expediente não foi informado");
+        }
+        if (configuracao.getFimExpediente() == null) {
+            throw new IllegalArgumentException("Fim do expediente não foi informado");
+        }
+        if (configuracao.getTempoDeDesconto() == null) {
+            throw new IllegalArgumentException("Tempo de desconto não foi informado");
+        }
 
-        Assert.isTrue(configuracao.getValorHora() != null, "valor hora nao foi colocado");
-        Assert.isTrue(configuracao.getValorMinutoMulta() != null,"valor da multa p/ minuto nao foi colocado");
-        Assert.isTrue(configuracao.getInicioExpediente() != null,"inicio do expediente nao foi colocado");
-        Assert.isTrue(configuracao.getFimExpediente() != null,"fim do expediente nao foi colocado");
-        Assert.isTrue(configuracao.getTempoDeDesconto() != null,"tempo desconto nao foi colocado");
-
-        Assert.isTrue(configuracaoBanco == null || !configuracaoBanco.getId().equals(configuracao.getId()), "nao deu pra indentificar");
+        if (configuracaoBanco != null && configuracaoBanco.getId().equals(configuracao.getId())) {
+            throw new IllegalArgumentException("Não foi possível identificar");
+        }
 
         configuracaoRepository.save(configuracao);
     }
+
 }
